@@ -1,6 +1,9 @@
 package cs492.vacationplanner;
 
+import android.content.ContentValues;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
+import android.location.Location;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
@@ -29,6 +32,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private GoogleMap mMap;
 
+    private SQLiteDatabase locationDB; //update database with values
+
     private SearchView search; //object to handle user searches
 
     @Override
@@ -39,6 +44,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        LocationContractHelper dbHelper = new LocationContractHelper(this);
+        locationDB = dbHelper.getWritableDatabase();
 
         getSupportLoaderManager().initLoader(0, null, this);
     }
@@ -88,7 +96,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void createMapSearch(String locationURL) {
         Bundle args = new Bundle();
         args.putString("url", locationURL);
-        //mLoadingProgressBar.setVisibility(View.VISIBLE);
         getSupportLoaderManager().restartLoader(0, args, this);
     }
 
@@ -109,6 +116,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             LatLng newLocation = new LatLng(searchResult.latitude, searchResult.longitude);
             mMap.addMarker(new MarkerOptions().position(newLocation).title(searchResult.country));
             mMap.moveCamera(CameraUpdateFactory.newLatLng(newLocation));
+
+            insertNewLocation(searchResult); //add values to be saved in database
         } else {
 
         }
@@ -117,6 +126,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onLoaderReset(Loader<String> loader) {
         // Nothing to do...
+    }
+
+    private long insertNewLocation(DataUtils.SearchResult searchResult) {
+        if (searchResult != null) {
+            ContentValues row = new ContentValues();
+            row.put(LocationContract.Locations.COLUMN_COUNTRY_NAME, searchResult.country);
+            row.put(LocationContract.Locations.COLUMN_LATITUDE, searchResult.latitude);
+            row.put(LocationContract.Locations.COLUMN_LONGITUDE, searchResult.longitude);
+            return locationDB.insert(LocationContract.Locations.TABLE_NAME, null, row);
+        } else {
+            return -1;
+        }
     }
 
     /**
