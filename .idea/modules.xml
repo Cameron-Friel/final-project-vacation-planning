@@ -2,8 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/Final.iml" filepath="$PROJECT_DIR$/Final.iml" />
+      <module fileurl="file://C:\Users\liyon\Desktop\cs\cs492\final-project-vacation-planning\Final.iml" filepath="C:\Users\liyon\Desktop\cs\cs492\final-project-vacation-planning\Final.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/final-project-vacation-planning.iml" filepath="$PROJECT_DIR$/final-project-vacation-planning.iml" />
     </modules>
   </component>
 </project>
