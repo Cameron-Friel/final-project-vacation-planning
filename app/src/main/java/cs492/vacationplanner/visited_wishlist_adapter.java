@@ -6,12 +6,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+
 /**
  * Created by liyon on 3/3/2018.
  */
 
 public class visited_wishlist_adapter extends RecyclerView.Adapter<visited_wishlist_adapter.ListViewHolder>{
-    // DB data list
+    private ArrayList<String> mlistLocation;
     OnListItemClickListener mListItemClickListener;
 
     visited_wishlist_adapter(OnListItemClickListener ListItemClickListener){
@@ -27,18 +29,27 @@ public class visited_wishlist_adapter extends RecyclerView.Adapter<visited_wishl
 
     @Override
     public void onBindViewHolder(ListViewHolder holder, int position) {
-        //holder.bind(DBList.get(positoin));
+        holder.bind(mlistLocation.get(position));
 
     }
 
     public interface OnListItemClickListener {
-        // void onListItemClick()
+        void onListItemClick(String location);
     }
 
     @Override
     public int getItemCount() {
-        // Db data list item count
-        return 0;
+        if(mlistLocation != null){
+            return mlistLocation.size();
+        } else {
+            return 0;
+        }
+    }
+
+    public void updateVWList(ArrayList<String> locationList){
+        mlistLocation = locationList;
+        notifyDataSetChanged();
+
     }
 
     public class ListViewHolder extends RecyclerView.ViewHolder {
@@ -46,20 +57,20 @@ public class visited_wishlist_adapter extends RecyclerView.Adapter<visited_wishl
 
         public ListViewHolder(View itemView) {
             super(itemView);
-            mListTV = (TextView)itemView.findViewById(R.id.tv_list_item);
+            mListTV = (TextView)itemView.findViewById(R.id.tv_db_item);
 
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    String country = "US"; // DB country field
-                    // void onListItemClick(country)
+                    String location = mlistLocation.get(getAdapterPosition());
+                    mListItemClickListener.onListItemClick(location);
                 }
             });
 
         }
 
-        public void bind(){ // param DB info
-            mListTV.setText("country name from DB");
+        public void bind(String s) {
+            mListTV.setText(s);
         }
     }
 }
