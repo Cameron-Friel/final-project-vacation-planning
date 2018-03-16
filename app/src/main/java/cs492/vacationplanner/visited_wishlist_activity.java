@@ -6,6 +6,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.MenuPopupWindow;
 import android.support.v7.widget.RecyclerView;
 import android.content.res.Configuration;
 import android.support.annotation.NonNull;
@@ -18,19 +19,13 @@ import android.widget.TextView;
 
 import java.util.ArrayList;
 
-public class visited_wishlist_activity extends AppCompatActivity
-        implements visited_wishlist_adapter.OnListItemClickListener,
-            NavigationView.OnNavigationItemSelectedListener{
+public class visited_wishlist_activity extends AppCompatActivity implements visited_wishlist_adapter.OnListItemClickListener {
 
     private RecyclerView mVWListRecyclerView;
     private visited_wishlist_adapter mAdapter;
     private SQLiteDatabase mDB;
     public final static String EXTRA_LOCATION = "LOCATION";
-    private DrawerLayout mDrawerLayout;
-    private ActionBarDrawerToggle mDrawerToggle;
     private TextView mListType;
-
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,21 +41,26 @@ public class visited_wishlist_activity extends AppCompatActivity
         mDB = dbHelper.getReadableDatabase();
 
         mAdapter = new visited_wishlist_adapter(this);
-        mAdapter.updateVWList(getAllSavedLocationFromDB());
-        mListType.setText("Visited and Wishlist!");
-        mVWListRecyclerView.setAdapter(mAdapter);
 
-        mDrawerLayout = findViewById(R.id.drawer_layout);
+        Intent intent = getIntent();
 
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setHomeButtonEnabled(true);
-
-        mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout, R.string.drawer_open, R.string.drawer_close);
-        mDrawerLayout.addDrawerListener(mDrawerToggle);
-
-        NavigationView navigationView = findViewById(R.id.nv_navigation_drawer);
-        navigationView.setNavigationItemSelectedListener(this);
-
+        if (intent.hasExtra(MapsActivity.VISITED_TITLE_KEY)) {
+            //UNCOMMENT ONCE DATABASE UPDATED TO ALLOW FOR VISITED
+            //mAdapter.updateVWList(getVisitedLocationFromDB());
+            mListType.setText(intent.getStringExtra(MapsActivity.VISITED_TITLE_KEY));
+            mVWListRecyclerView.setAdapter(mAdapter);
+        }
+        else if (intent.hasExtra(MapsActivity.WISH_LIST_TITLE_KEY)) {
+            //UNCOMMENT ONCE DATABASE UPDATED TO ALLOW FOR WISH LIST
+            //mAdapter.updateVWList(getWishlistLocationFromDB());
+            mListType.setText(intent.getStringExtra(MapsActivity.WISH_LIST_TITLE_KEY));
+            mVWListRecyclerView.setAdapter(mAdapter);
+        }
+        else {
+            mAdapter.updateVWList(getAllSavedLocationFromDB());
+            mListType.setText("Visited and Wish List");
+            mVWListRecyclerView.setAdapter(mAdapter);
+        }
     }
 
     @Override
@@ -77,7 +77,7 @@ public class visited_wishlist_activity extends AppCompatActivity
                 null,
                 null,
                 null,
-                LocationContract.Locations.COLUMN_TIMESTAMP + "DESC"
+                null
         );
         ArrayList<String> listLocation = new ArrayList<>();
         while(cursor.moveToNext()){
@@ -146,35 +146,5 @@ public class visited_wishlist_activity extends AppCompatActivity
         Intent noteIntent = new Intent(this, NotesActivity.class);
         noteIntent.putExtra(EXTRA_LOCATION, location);
         startActivity(noteIntent);
-    }
-
-    public boolean onOptionItemSelected(MenuItem item){
-        if (mDrawerToggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.nav_visited_wishlist:
-                mAdapter.updateVWList(getAllSavedLocationFromDB());
-                mListType.setText("Visited and Wishlist!");
-                mDrawerLayout.closeDrawers();
-                return true;
-            case R.id.nav_visited:
-                mAdapter.updateVWList(getVisitedLocationFromDB());
-                mListType.setText("Visited!");
-                mDrawerLayout.closeDrawers();
-                return true;
-            case R.id.nav_wishlist:
-                mAdapter.updateVWList(getWishlistLocationFromDB());
-                mListType.setText("Wishlist!");
-                mDrawerLayout.closeDrawers();
-                return true;
-            default:
-                return false;
-        }
     }
 }
