@@ -3,6 +3,7 @@ package cs492.vacationplanner;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
 import android.support.annotation.NonNull;
@@ -21,6 +22,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -44,7 +46,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private GoogleMap mMap;
 
-    private SQLiteDatabase locationDB; //update database with values
+    private SQLiteDatabase locationWriteableDB; //update database with values
+    private SQLiteDatabase locationReadableDB; //read database for values
 
     private DrawerLayout mDrawerLayout;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -72,9 +75,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         navigationView.setNavigationItemSelectedListener(this);
 
         LocationContractHelper dbHelper = new LocationContractHelper(this);
-        locationDB = dbHelper.getWritableDatabase();
+        locationWriteableDB = dbHelper.getWritableDatabase();
+        locationReadableDB = dbHelper.getReadableDatabase();
 
         getSupportLoaderManager().initLoader(0, null, this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        locationReadableDB.close();
+        locationWriteableDB.close();
+        super.onDestroy();
     }
 
     @Override
@@ -172,14 +183,44 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private long insertNewLocation(DataUtils.SearchResult searchResult) {
         if (searchResult != null) {
-            ContentValues row = new ContentValues();
-            row.put(LocationContract.Locations.COLUMN_COUNTRY_NAME, searchResult.country);
-            row.put(LocationContract.Locations.COLUMN_LATITUDE, searchResult.latitude);
-            row.put(LocationContract.Locations.COLUMN_LONGITUDE, searchResult.longitude);
-            return locationDB.insert(LocationContract.Locations.TABLE_NAME, null, row);
+            if (isDuplicateEntry(searchResult.country) == false) { //check if country is already in the database
+                ContentValues row = new ContentValues();
+                row.put(LocationContract.Locations.COLUMN_COUNTRY_NAME, searchResult.country);
+                row.put(LocationContract.Locations.COLUMN_LATITUDE, searchResult.latitude);
+                row.put(LocationContract.Locations.COLUMN_LONGITUDE, searchResult.longitude);
+                Toast displayResult = Toast.makeText(this, "Added " + searchResult.country + " to your list.", Toast.LENGTH_LONG);
+                displayResult.show();
+                return locationWriteableDB.insert(LocationContract.Locations.TABLE_NAME, null, row);
+            }
+            else { //location is a duplicate, ignore
+                Toast displayResult = Toast.makeText(this, "Unable to add " + searchResult.country + " to your list, it already exists!", Toast.LENGTH_LONG);
+                displayResult.show();
+                return -1;
+            }
         } else {
             return -1;
         }
+    }
+
+    public boolean isDuplicateEntry(String countryName) {
+        boolean isSaved = false;
+
+        if (countryName != null) {
+            String sqlSelection = LocationContract.Locations.COLUMN_COUNTRY_NAME + " = ?";
+            String[] sqlSelectionArgs = {countryName};
+            Cursor cursor = locationReadableDB.query(
+                    LocationContract.Locations.TABLE_NAME,
+                    null,
+                    sqlSelection,
+                    sqlSelectionArgs,
+                    null,
+                    null,
+                    null
+            );
+            isSaved = cursor.getCount() > 0;
+            cursor.close();
+        }
+        return isSaved;
     }
 
     @Override
