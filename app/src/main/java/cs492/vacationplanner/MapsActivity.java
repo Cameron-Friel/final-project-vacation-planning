@@ -2,13 +2,19 @@ package cs492.vacationplanner;
 
 import android.content.ContentValues;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.design.widget.NavigationView;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 import android.support.v4.view.MenuItemCompat;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
@@ -29,11 +35,19 @@ import java.io.IOException;
 import cs492.vacationplanner.Utils.DataUtils;
 import cs492.vacationplanner.Utils.NetworkUtils;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LoaderManager.LoaderCallbacks<String> {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LoaderManager.LoaderCallbacks<String>, NavigationView.OnNavigationItemSelectedListener {
+
+    //Keys that go with bundles to new activities
+
+    public final static String VISITED_TITLE_KEY = "visitedKey";
+    public final static String WISH_LIST_TITLE_KEY = "wishListKey";
 
     private GoogleMap mMap;
 
     private SQLiteDatabase locationDB; //update database with values
+
+    private DrawerLayout mDrawerLayout;
+    private ActionBarDrawerToggle mDrawerToggle;
 
     private SearchView search; //object to handle user searches
 
@@ -45,6 +59,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        mDrawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
+
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeButtonEnabled(true);
+
+        mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout, R.string.drawer_open, R.string.drawer_close);
+        mDrawerLayout.addDrawerListener(mDrawerToggle);
+
+        NavigationView navigationView = findViewById(R.id.main_navigation_drawer);
+        navigationView.setNavigationItemSelectedListener(this);
 
         LocationContractHelper dbHelper = new LocationContractHelper(this);
         locationDB = dbHelper.getWritableDatabase();
@@ -80,18 +105,34 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+
         switch (item.getItemId()) {
-            case R.id.instance_notes:
-                initNotesActivity();
+            case R.id.main_settings:
+                //add functionality for settings
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
-    public void initNotesActivity() { //preliminary notes activity init. In the future this needs to send a bundle that contains country specified data
-        Intent notesIntent = new Intent(this, NotesActivity.class);
-        startActivity(notesIntent);
+    public void initVisitedAndWishListActivity() { //sends user to recycle view of their visited and wish list entries in the database
+        Intent visitedAndWishListActivity = new Intent(this, visited_wishlist_activity.class);
+        startActivity(visitedAndWishListActivity);
+    }
+
+    public void initVisitedActivity() { //sends user to recycle view of their visited entries in the database
+        Intent visitedActivity = new Intent(this, visited_wishlist_activity.class);
+        visitedActivity.putExtra(VISITED_TITLE_KEY, "Visited Places");
+        startActivity(visitedActivity);
+    }
+
+    public void initWishListActivity() { //sends user to recycle view of their wish list entries in the database
+        Intent wishListActivity = new Intent(this, visited_wishlist_activity.class);
+        wishListActivity.putExtra(WISH_LIST_TITLE_KEY, "Places on Wish List");
+        startActivity(wishListActivity);
     }
 
     public void createMapSearch(String locationURL) {
@@ -141,6 +182,37 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    @Override
+    protected void onPostCreate(@Nullable Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        mDrawerToggle.syncState();
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        mDrawerToggle.onConfigurationChanged(newConfig);
+    }
+
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.nav_visited_wishlist:
+                initVisitedAndWishListActivity();
+                mDrawerLayout.closeDrawers();
+                return true;
+            case R.id.nav_visited:
+                initVisitedActivity();
+                mDrawerLayout.closeDrawers();
+                return true;
+            case R.id.nav_wishlist:
+                initWishListActivity();
+                mDrawerLayout.closeDrawers();
+                return true;
+            default:
+                return false;
+        }
+    }
+
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
@@ -162,6 +234,5 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Implemented Zoom Controls to allow for easier navigation on the emulator
         UiSettings uiSettings = googleMap.getUiSettings();
         uiSettings.setZoomControlsEnabled(true);
-
     }
 }
