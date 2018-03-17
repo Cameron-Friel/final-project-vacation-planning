@@ -95,6 +95,7 @@ public class ListOptionDialogFragment extends AppCompatDialogFragment {
                 row.put(LocationContract.Locations.COLUMN_COUNTRY_NAME, searchResult.country);
                 row.put(LocationContract.Locations.COLUMN_LATITUDE, searchResult.latitude);
                 row.put(LocationContract.Locations.COLUMN_LONGITUDE, searchResult.longitude);
+                row.put(LocationContract.Locations.COLUMN_LIST_OPTION, option);
 
                 Toast displayResult = Toast.makeText(getContext(), "Added " + searchResult.country + " to your list.", Toast.LENGTH_LONG);
                 displayResult.show();

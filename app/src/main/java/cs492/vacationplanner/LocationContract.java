@@ -16,6 +16,7 @@ public class LocationContract {
         public static final String COLUMN_COUNTRY_NAME = "country";
         public static final String COLUMN_LATITUDE = "latitude";
         public static final String COLUMN_LONGITUDE = "longitude";
+        public static final String COLUMN_LIST_OPTION = "list_option";
         public static final String COLUMN_TIMESTAMP = "timestamp";
     }
 }
