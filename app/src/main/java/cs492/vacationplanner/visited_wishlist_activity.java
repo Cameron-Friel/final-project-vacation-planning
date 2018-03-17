@@ -45,18 +45,19 @@ public class visited_wishlist_activity extends AppCompatActivity implements visi
         Intent intent = getIntent();
 
         if (intent.hasExtra(MapsActivity.VISITED_TITLE_KEY)) {
-            //UNCOMMENT ONCE DATABASE UPDATED TO ALLOW FOR VISITED
-            //mAdapter.updateVWList(getVisitedLocationFromDB());
+            //add visited countries to the recycler view
+            mAdapter.updateVWList(getVisitedLocationFromDB());
             mListType.setText(intent.getStringExtra(MapsActivity.VISITED_TITLE_KEY));
             mVWListRecyclerView.setAdapter(mAdapter);
         }
         else if (intent.hasExtra(MapsActivity.WISH_LIST_TITLE_KEY)) {
-            //UNCOMMENT ONCE DATABASE UPDATED TO ALLOW FOR WISH LIST
-            //mAdapter.updateVWList(getWishlistLocationFromDB());
+            //add wish list countries to the recycler view
+            mAdapter.updateVWList(getWishListLocationFromDB());
             mListType.setText(intent.getStringExtra(MapsActivity.WISH_LIST_TITLE_KEY));
             mVWListRecyclerView.setAdapter(mAdapter);
         }
         else {
+            //add both wish and visited list to the recycler view
             mAdapter.updateVWList(getAllSavedLocationFromDB());
             mListType.setText("Visited and Wish List");
             mVWListRecyclerView.setAdapter(mAdapter);
@@ -92,8 +93,8 @@ public class visited_wishlist_activity extends AppCompatActivity implements visi
     }
 
     private ArrayList<String> getVisitedLocationFromDB() {
-        String selection = "visited_wishlist =?";
-        String[] selectionArgs = {"visited"};
+        String selection = "list_option = ?";
+        String[] selectionArgs = {"Visited"};
         Cursor cursor = mDB.query(
                 LocationContract.Locations.TABLE_NAME,
                 null,
@@ -101,7 +102,7 @@ public class visited_wishlist_activity extends AppCompatActivity implements visi
                 selectionArgs,
                 null,
                 null,
-                LocationContract.Locations.COLUMN_TIMESTAMP + "DESC"
+                LocationContract.Locations.COLUMN_TIMESTAMP + " DESC"
 
         );
         ArrayList<String> listLocation = new ArrayList<>();
@@ -116,9 +117,9 @@ public class visited_wishlist_activity extends AppCompatActivity implements visi
         return listLocation;
     }
 
-    private ArrayList<String> getWishlistLocationFromDB() {
-        String selection = "visited_wishlist =?";
-        String[] selectionArgs = {"visited"};
+    private ArrayList<String> getWishListLocationFromDB() {
+        String selection = "list_option = ?";
+        String[] selectionArgs = {"Wish List"};
         Cursor cursor = mDB.query(
                 LocationContract.Locations.TABLE_NAME,
                 null,
@@ -126,7 +127,7 @@ public class visited_wishlist_activity extends AppCompatActivity implements visi
                 selectionArgs,
                 null,
                 null,
-                LocationContract.Locations.COLUMN_TIMESTAMP + "DESC"
+                LocationContract.Locations.COLUMN_TIMESTAMP + " DESC"
 
         );
         ArrayList<String> listLocation = new ArrayList<>();
