@@ -5,23 +5,23 @@ import android.content.Intent;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.location.Location;
+import android.os.AsyncTask;
+import android.os.Handler;
+import android.os.Message;
+import android.provider.ContactsContract;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
-import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.DialogFragment;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
-import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -30,6 +30,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
@@ -37,17 +38,16 @@ import java.io.IOException;
 import cs492.vacationplanner.Utils.DataUtils;
 import cs492.vacationplanner.Utils.NetworkUtils;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, LoaderManager.LoaderCallbacks<String>, NavigationView.OnNavigationItemSelectedListener {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, NavigationView.OnNavigationItemSelectedListener {
 
     //Keys that go with bundles to new activities
 
     public final static String VISITED_TITLE_KEY = "visitedKey";
     public final static String WISH_LIST_TITLE_KEY = "wishListKey";
 
-    private GoogleMap mMap;
+    public final static String COUNTRY_DATA_KEY = "countryDataKey"; //key to find country information in the List Option dialog fragment
 
-    private SQLiteDatabase locationWriteableDB; //update database with values
-    private SQLiteDatabase locationReadableDB; //read database for values
+    private GoogleMap mMap;
 
     private DrawerLayout mDrawerLayout;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -73,18 +73,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         NavigationView navigationView = findViewById(R.id.main_navigation_drawer);
         navigationView.setNavigationItemSelectedListener(this);
-
-        LocationContractHelper dbHelper = new LocationContractHelper(this);
-        locationWriteableDB = dbHelper.getWritableDatabase();
-        locationReadableDB = dbHelper.getReadableDatabase();
-
-        getSupportLoaderManager().initLoader(0, null, this);
     }
 
     @Override
     protected void onDestroy() {
-        locationReadableDB.close();
-        locationWriteableDB.close();
         super.onDestroy();
     }
 
@@ -103,11 +95,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     @Override
                     public boolean onQueryTextSubmit(String query) {
                         //text submitted by user
-                        System.out.println(query);
-                        String locationURL = DataUtils.buildLocationURL(query);
-                        System.out.println(locationURL);
+                        String locationURL = DataUtils.buildLocationURL(query); //build url from given string
 
-                        createMapSearch(locationURL);
+                        //clear the text in the search view once user submits
+
+                        search.setQuery("", false);
+                        search.clearFocus();
+
+                        new LocationOptionSearchTask().execute(locationURL); //create async task to get country data
                         return false;
                     }
                 });
@@ -146,81 +141,47 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         startActivity(wishListActivity);
     }
 
-    public void createMapSearch(String locationURL) {
-        Bundle args = new Bundle();
-        args.putString("url", locationURL);
-        getSupportLoaderManager().restartLoader(0, args, this);
-    }
+    public class LocationOptionSearchTask extends AsyncTask<String, Void, String> {
 
-    @Override
-    public Loader<String> onCreateLoader(int id, Bundle args) {
-        String searchURL = null;
-        if (args != null) {
-            searchURL = args.getString("url");
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
         }
-        return new SearchLoader(this, searchURL);
-    }
 
-    @Override
-    public void onLoadFinished(Loader<String> loader, String data) {
-        if (data != null) {
-            DataUtils.SearchResult searchResult = DataUtils.parseSearchResultsJSON(data); //fetch the country name and lat and lng positions
+        @Override
+        protected String doInBackground(String... urls) {
+            String locationURL = urls[0];
+
+            String searchResults = null;
+            try {
+                searchResults = NetworkUtils.doHTTPGet(locationURL);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return searchResults;
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            DataUtils.SearchResult searchResult = DataUtils.parseSearchResultsJSON(s); //fetch the country name and lat and lng positions
 
             LatLng newLocation = new LatLng(searchResult.latitude, searchResult.longitude);
-            mMap.addMarker(new MarkerOptions().position(newLocation).title(searchResult.country));
+            Marker temp = mMap.addMarker(new MarkerOptions().position(newLocation).title(searchResult.country));
             mMap.moveCamera(CameraUpdateFactory.newLatLng(newLocation));
 
-            insertNewLocation(searchResult); //add values to be saved in database
-        } else {
+            setupListOptionFragment(searchResult);
 
+            temp.remove(); //remove marker since user has exited dialog fragment
         }
     }
 
-    @Override
-    public void onLoaderReset(Loader<String> loader) {
-        // Nothing to do...
-    }
+    public void setupListOptionFragment(DataUtils.SearchResult searchResult) { //sets up data to be sent to the dialog fragment
+        Bundle args = new Bundle();
+        args.putSerializable(COUNTRY_DATA_KEY, searchResult); //store user's chosen country data
 
-    private long insertNewLocation(DataUtils.SearchResult searchResult) {
-        if (searchResult != null) {
-            if (isDuplicateEntry(searchResult.country) == false) { //check if country is already in the database
-                ContentValues row = new ContentValues();
-                row.put(LocationContract.Locations.COLUMN_COUNTRY_NAME, searchResult.country);
-                row.put(LocationContract.Locations.COLUMN_LATITUDE, searchResult.latitude);
-                row.put(LocationContract.Locations.COLUMN_LONGITUDE, searchResult.longitude);
-                Toast displayResult = Toast.makeText(this, "Added " + searchResult.country + " to your list.", Toast.LENGTH_LONG);
-                displayResult.show();
-                return locationWriteableDB.insert(LocationContract.Locations.TABLE_NAME, null, row);
-            }
-            else { //location is a duplicate, ignore
-                Toast displayResult = Toast.makeText(this, "Unable to add " + searchResult.country + " to your list, it already exists!", Toast.LENGTH_LONG);
-                displayResult.show();
-                return -1;
-            }
-        } else {
-            return -1;
-        }
-    }
-
-    public boolean isDuplicateEntry(String countryName) {
-        boolean isSaved = false;
-
-        if (countryName != null) {
-            String sqlSelection = LocationContract.Locations.COLUMN_COUNTRY_NAME + " = ?";
-            String[] sqlSelectionArgs = {countryName};
-            Cursor cursor = locationReadableDB.query(
-                    LocationContract.Locations.TABLE_NAME,
-                    null,
-                    sqlSelection,
-                    sqlSelectionArgs,
-                    null,
-                    null,
-                    null
-            );
-            isSaved = cursor.getCount() > 0;
-            cursor.close();
-        }
-        return isSaved;
+        DialogFragment newFragment = new ListOptionDialogFragment();
+        newFragment.setArguments(args); //store user's data to be sent to dialog fragment
+        newFragment.show(getSupportFragmentManager(), "listOptions"); //display fragment
     }
 
     @Override

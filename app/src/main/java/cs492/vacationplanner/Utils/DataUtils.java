@@ -14,8 +14,6 @@ import java.util.ArrayList;
  */
 
 public class DataUtils {
-    public static final String EXTRA_SEARCH_RESULT = "GitHubUtils.SearchResult";
-
     final static String BASE_URL = "https://maps.googleapis.com/maps/api/geocode/";
     final static String TYPE = "json";
     final static String QUERY_PARAM = "address";
