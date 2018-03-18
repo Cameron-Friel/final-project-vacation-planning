@@ -4,4 +4,11 @@
 
     <!-- Fusion Tables Strings -->
     <string name="fusion_table_api_key">AIzaSyAZye_2iYZvKqAkxI6KgAmQ76cKqg9l5sk</string>
+    <string name="notes">Notes</string>
+	
+	<string name="drawer_open">Open Drawer</string>
+    <string name="drawer_close">Close Drawer</string>
+    <string name="nav_visited_wishlist">Visited and Wishlist</string>
+    <string name="nav_visited">Visited</string>
+    <string name="nav_wishlist">Wishlist</string>
 </resources>
