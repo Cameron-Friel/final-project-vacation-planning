@@ -189,6 +189,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private void deleteOverlays() {
+        for (GeoJsonLayer layer : mCountryOverlays) {
+            layer.removeLayerFromMap();
+        }
+        while (!mCountryOverlays.isEmpty()) {
+            mCountryOverlays.remove(0);
+        }
+    }
+
     private void createOverlays(ArrayList<JSONObject> borderData) {
         GeoJsonLayer layer = null;
         for(int i=0;i<borderData.size();i++)
@@ -359,6 +368,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 Log.d(TAG,data);
                 if(mFusionTableResults!=null) {
                     Log.d(TAG,mFusionTableResults.toString());
+                    deleteOverlays();
                     createOverlays(mFusionTableResults);
                     addOverlays();
                 }
