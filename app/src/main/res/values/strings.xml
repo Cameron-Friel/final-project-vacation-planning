@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">Vacation Planner</string>
     <string name="title_activity_maps">Map</string>
+
+    <!-- Fusion Tables Strings -->
+    <string name="fusion_table_api_key">AIzaSyAZye_2iYZvKqAkxI6KgAmQ76cKqg9l5sk</string>
 </resources>
