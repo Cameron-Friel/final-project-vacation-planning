@@ -2,6 +2,8 @@ package cs492.vacationplanner;
 
 import android.location.Geocoder;
 import android.net.Uri;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -28,6 +30,14 @@ public class CountryOutlinesUtils {
     static final String FUSION_TABLES_SQL_PARAM = "sql";
     static final String FUSION_TABLES_KEY_PARAM = "key";
     static final String FUSION_TABLES_APIKEY = "AIzaSyAZye_2iYZvKqAkxI6KgAmQ76cKqg9l5sk";
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static String buildLocationInString(ArrayList<String> countries) {
+        String inString = new String("'");
+        inString += String.join("', '", countries);
+        inString += "'";
+        return inString;
+    }
 
     public static String buildFusionTablesQuery(String countryNames) {
         Uri.Builder builder = Uri.parse(FUSION_TABLES_BASE_URL).buildUpon();

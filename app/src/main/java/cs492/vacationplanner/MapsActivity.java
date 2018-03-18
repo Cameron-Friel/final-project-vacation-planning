@@ -3,10 +3,13 @@ package cs492.vacationplanner;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
@@ -76,7 +79,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
-        setTemps();
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -140,6 +142,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    public ArrayList<String> getAllContryNamesFromDatabase() {
+        Cursor cursor = locationDB.query(
+                LocationContract.Locations.TABLE_NAME,
+                new String[]{LocationContract.Locations.COLUMN_COUNTRY_NAME},
+                null,
+                null,
+                null,
+                null,
+                null);
+        ArrayList<String> savedCountyNames = new ArrayList<String>();
+        while (cursor.moveToNext()) {
+            String name = new String();
+            name = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_COUNTRY_NAME));
+            savedCountyNames.add(name);
+        }
+        return savedCountyNames;
     }
 
     public void initVisitedAndWishListActivity() { //sends user to recycle view of their visited and wish list entries in the database
@@ -212,6 +232,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return new SearchLoader(this, searchURL);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onLoadFinished(Loader<String> loader, String data) {
         if (data != null) {
@@ -222,6 +243,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             mMap.moveCamera(CameraUpdateFactory.newLatLng(newLocation));
 
             insertNewLocation(searchResult); //add values to be saved in database
+            loadOverlays(true);
         } else {
 
         }
@@ -241,6 +263,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return locationDB.insert(LocationContract.Locations.TABLE_NAME, null, row);
         } else {
             return -1;
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void loadOverlays(boolean reload) {
+        ArrayList<String> savedCountries = getAllContryNamesFromDatabase();
+        Log.d(TAG,CountryOutlinesUtils.buildLocationInString(savedCountries));
+        String url = CountryOutlinesUtils.buildFusionTablesQuery(CountryOutlinesUtils.buildLocationInString(savedCountries));
+        Bundle args = new Bundle();
+        args.putString(FusionTableLoaderManager.FUSION_TABLE_URL_KEY, url);
+        if(reload) {
+            getSupportLoaderManager().restartLoader(FUSION_TABLE_LOADER_ID, args, mFusionTableLoaderManager);
+        } else {
+            getSupportLoaderManager().initLoader(FUSION_TABLE_LOADER_ID, args, mFusionTableLoaderManager);
         }
     }
 
@@ -284,14 +320,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
      */
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        String url = CountryOutlinesUtils.buildFusionTablesQuery("'Germany', 'Japan', 'Italy', 'Aruba', 'Mexico', 'Canada'");
-        Bundle args = new Bundle();
-        args.putString(FusionTableLoaderManager.FUSION_TABLE_URL_KEY, url);
-        getSupportLoaderManager().initLoader(FUSION_TABLE_LOADER_ID, args, mFusionTableLoaderManager);
+        loadOverlays(false);
 
         GeoJsonLayer layer = null;
 
@@ -299,7 +333,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         LatLng sydney = new LatLng(-34, 151);
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-        addSavedLocations();
 
         // Implemented Zoom Controls to allow for easier navigation on the emulator
         UiSettings uiSettings = googleMap.getUiSettings();
