@@ -381,10 +381,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         GeoJsonLayer layer = null;
 
-
-        LatLng sydney = new LatLng(-34, 151);
-        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+        LatLng Corvallis = new LatLng(20, -60);
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(Corvallis));
 
         // Implemented Zoom Controls to allow for easier navigation on the emulator
         UiSettings uiSettings = googleMap.getUiSettings();
