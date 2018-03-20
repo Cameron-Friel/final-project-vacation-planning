@@ -223,6 +223,21 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private boolean isVisited(String country) {
+        Cursor cursor = locationDB.query(
+                LocationContract.Locations.TABLE_NAME,
+                new String[]{LocationContract.Locations.COLUMN_LIST_OPTION},
+                LocationContract.Locations.COLUMN_COUNTRY_NAME + "='" + country + "'",
+                null,
+                null,
+                null,
+                null
+        );
+        cursor.moveToNext();
+        String option = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_LIST_OPTION));
+        return option.equals("Visited");
+    }
+
     private void deleteOverlays() {
         for (GeoJsonLayer layer : mCountryOverlays) {
             layer.removeLayerFromMap();
@@ -244,7 +259,13 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             for (GeoJsonFeature e : tempLayer.getFeatures())
             {
                 GeoJsonPolygonStyle style = new GeoJsonPolygonStyle();
-                style.setFillColor(0xff00ff00+(20*i));                      //Color of the overlays
+                if(isVisited(borderData.get(i).name)) {
+                    style.setFillColor(0xff00ff00);                      //Color of the visited overlays
+                    e.setProperty("Option", "Visited");
+                } else {
+                    style.setFillColor(0xffff0000);                      //Color of the wishlist overlays
+                    e.setProperty("Option", "Wish List");
+                }
                 style.setStrokeColor(0xff000000);
                 style.setStrokeWidth(2);
                 e.setPolygonStyle(style);
@@ -431,7 +452,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void onFeatureClick(Feature feature) {
             //Log.d(TAG, feature.toString());
             //Log.d(TAG,feature.getProperties().toString());
-                countryClicked(feature.getProperty("Name"));
+                countryClicked(feature.getProperty("Name"), feature.getProperty("Option"));
         }
     }
 
@@ -446,12 +467,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    public void countryClicked(String countryName) {
+    public void countryClicked(String countryName, String option) {
         Log.d(TAG, countryName + " Clicked");
         LatLng location = getLattitudeAndLongitudeOfCountryFromDB(countryName);
         mCurrentSelectionMarker.setPosition(location);
         mCurrentSelectionMarker.setTitle(countryName);
-        mCurrentSelectionMarker.setSnippet("This country is called " + countryName);    //Info Window Snippet
+        mCurrentSelectionMarker.setSnippet("This country is on the list:" + option);    //Info Window Snippet
         mCurrentSelectionMarker.showInfoWindow();
     }
 }
