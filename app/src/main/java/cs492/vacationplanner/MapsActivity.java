@@ -32,14 +32,18 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.maps.android.data.Feature;
 import com.google.maps.android.data.geojson.GeoJsonFeature;
 import com.google.maps.android.data.geojson.GeoJsonLayer;
 import com.google.maps.android.data.geojson.GeoJsonPolygonStyle;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -63,6 +67,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private FusionTableLoaderManager mFusionTableLoaderManager = new FusionTableLoaderManager();
 
+    private Marker mCurrentSelectionMarker;
 
     private ArrayList<GeoJsonLayer> mCountryOverlays = new ArrayList<GeoJsonLayer>();
 
@@ -162,6 +167,24 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return savedCountyNames;
     }
 
+    public LatLng getLattitudeAndLongitudeOfCountryFromDB(String country) {
+        Cursor cursor = locationDB.query(
+                LocationContract.Locations.TABLE_NAME,
+                new String[]{LocationContract.Locations.COLUMN_LATITUDE, LocationContract.Locations.COLUMN_LONGITUDE},
+                LocationContract.Locations.COLUMN_COUNTRY_NAME + "='" + country + "'",
+                null,
+                null,
+                null,
+                null);
+        cursor.moveToNext();
+        String lat = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_LATITUDE));
+        String lon = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_LONGITUDE));
+        Log.d(TAG, lat);
+        LatLng retVal = new LatLng(Double.parseDouble(lat),Double.parseDouble(lon));
+        //LatLng retVal = new LatLng(1,1);
+        return retVal;
+    }
+
     public void initVisitedAndWishListActivity() { //sends user to recycle view of their visited and wish list entries in the database
         Intent visitedAndWishListActivity = new Intent(this, visited_wishlist_activity.class);
         startActivity(visitedAndWishListActivity);
@@ -198,21 +221,28 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    private void createOverlays(ArrayList<JSONObject> borderData) {
-        GeoJsonLayer layer = null;
+    private void createOverlays(ArrayList<CountryOutlinesUtils.LayerInfo> borderData) {
+        GeoJsonLayer layer = new GeoJsonLayer(mMap, borderData.get(0).layerGeometry);
+        for(GeoJsonFeature e : layer.getFeatures()) {
+            layer.removeFeature(e);
+        }
         for(int i=0;i<borderData.size();i++)
         {
             Log.d(TAG,"Creating Overlay");
-            layer = new GeoJsonLayer(mMap,borderData.get(i));
-            for (GeoJsonFeature eFeature : layer.getFeatures()) {
+            GeoJsonLayer tempLayer = new GeoJsonLayer(mMap,borderData.get(i).layerGeometry);
+            for (GeoJsonFeature e : tempLayer.getFeatures())
+            {
                 GeoJsonPolygonStyle style = new GeoJsonPolygonStyle();
-                style.setFillColor(0xff00ff00);
+                style.setFillColor(0xff00ff00+(20*i));                      //Color of the overlays
                 style.setStrokeColor(0xff000000);
                 style.setStrokeWidth(2);
-                eFeature.setPolygonStyle(style);
+                e.setPolygonStyle(style);
+                e.setProperty("Name", borderData.get(i).name);
+                layer.addFeature(e);
             }
-            mCountryOverlays.add(layer);
         }
+        mCountryOverlays.add(layer);
+        layer.setOnFeatureClickListener(new OnLayerClickListener());
     }
 
     private void addOverlays() {
@@ -334,6 +364,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
+        mMap.setOnInfoWindowClickListener(new OnInfoWindowClickedListener());
+        mCurrentSelectionMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(0,0)).alpha(0).infoWindowAnchor((float)0.5, 1));
+
         loadOverlays(false);
 
         GeoJsonLayer layer = null;
@@ -350,7 +383,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private class FusionTableLoaderManager implements LoaderManager.LoaderCallbacks<String> {
         public static final String FUSION_TABLE_URL_KEY = "fusionTableURL";
-        private ArrayList<JSONObject> mFusionTableResults = null;
+        private ArrayList<CountryOutlinesUtils.LayerInfo> mFusionTableResults = null;
 
         @Override
         public Loader<String> onCreateLoader(int id, Bundle args) {
@@ -382,4 +415,33 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     }
 
+    private class OnLayerClickListener implements GeoJsonLayer.GeoJsonOnFeatureClickListener {
+
+        @Override
+        public void onFeatureClick(Feature feature) {
+            //Log.d(TAG, feature.toString());
+            //Log.d(TAG,feature.getProperties().toString());
+                countryClicked(feature.getProperty("Name"));
+        }
+    }
+
+    /**
+     * Add functionality here for clicking on the information window for markers
+     */
+    private class OnInfoWindowClickedListener implements GoogleMap.OnInfoWindowClickListener {
+        @Override
+        public void onInfoWindowClick(Marker marker) {
+            Log.d(TAG, marker.getTitle() + "'s info window clicked");
+            //Implement info window clicked
+        }
+    }
+
+    public void countryClicked(String countryName) {
+        Log.d(TAG, countryName + " Clicked");
+        LatLng location = getLattitudeAndLongitudeOfCountryFromDB(countryName);
+        mCurrentSelectionMarker.setPosition(location);
+        mCurrentSelectionMarker.setTitle(countryName);
+        mCurrentSelectionMarker.setSnippet("This country is called " + countryName);    //Info Window Snippet
+        mCurrentSelectionMarker.showInfoWindow();
+    }
 }

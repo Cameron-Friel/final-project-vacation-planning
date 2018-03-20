@@ -31,6 +31,11 @@ public class CountryOutlinesUtils {
     static final String FUSION_TABLES_KEY_PARAM = "key";
     static final String FUSION_TABLES_APIKEY = "AIzaSyAZye_2iYZvKqAkxI6KgAmQ76cKqg9l5sk";
 
+    public static class LayerInfo {
+        public JSONObject layerGeometry;
+        public String name;
+    }
+
     @RequiresApi(api = Build.VERSION_CODES.O)
     public static String buildLocationInString(ArrayList<String> countries) {
         String inString = new String("'");
@@ -43,7 +48,7 @@ public class CountryOutlinesUtils {
         Uri.Builder builder = Uri.parse(FUSION_TABLES_BASE_URL).buildUpon();
 
         String queryValue = new String();
-        queryValue = "SELECT json_4326 FROM " + BORDERS_TABLE_ID + " WHERE name IN (" + countryNames + ")";
+        queryValue = "SELECT json_4326, name FROM " + BORDERS_TABLE_ID + " WHERE name IN (" + countryNames + ")";
         builder.appendQueryParameter(FUSION_TABLES_SQL_PARAM,queryValue);
         builder.appendQueryParameter(FUSION_TABLES_KEY_PARAM,FUSION_TABLES_APIKEY);
 
@@ -51,8 +56,8 @@ public class CountryOutlinesUtils {
     }
 
     //public static ArrayList<GeoJsonLayer> getGeoJsonCoordinates(String queryResults) {
-    public static ArrayList<JSONObject> getGeoJsonCoordinates(String queryResults) {
-        ArrayList<JSONObject> layersList = new ArrayList<>();
+    public static ArrayList<LayerInfo> getGeoJsonCoordinates(String queryResults) {
+        ArrayList<LayerInfo> layersList = new ArrayList<>();
         try {
             Log.d(TAG,"test");
             JSONObject queryResultsObj = new JSONObject(queryResults);
@@ -61,10 +66,14 @@ public class CountryOutlinesUtils {
             Log.d(TAG, borderData.toString());
             for(int i =0; i<borderData.length();i++)
             {
+                LayerInfo layerInfo = new LayerInfo();
                 JSONArray country = borderData.getJSONArray(i);
                 Log.d(TAG,country.toString());
                 Log.d(TAG,country.get(0).toString());
-                layersList.add(new JSONObject(country.get(0).toString()));
+                Log.d(TAG,country.get(1).toString());
+                layerInfo.layerGeometry = new JSONObject(country.get(0).toString());
+                layerInfo.name = country.get(1).toString();
+                layersList.add(layerInfo);
             }
             return layersList;
         } catch (JSONException e) {
