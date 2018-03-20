@@ -11,4 +11,7 @@
     <string name="nav_visited_wishlist">Visited and Wishlist</string>
     <string name="nav_visited">Visited</string>
     <string name="nav_wishlist">Wishlist</string>
+
+    <string name="dialog_visited">Visited</string>
+    <string name="dialog_wish_list">Wish List</string>
 </resources>
