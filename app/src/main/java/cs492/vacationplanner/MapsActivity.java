@@ -3,15 +3,20 @@ package cs492.vacationplanner;
 import android.content.ContentValues;
 import android.content.Intent;
 import android.content.res.Configuration;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.location.Location;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.annotation.RequiresApi;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
+import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -27,8 +32,21 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.maps.android.data.Feature;
+import com.google.maps.android.data.geojson.GeoJsonFeature;
+import com.google.maps.android.data.geojson.GeoJsonLayer;
+import com.google.maps.android.data.geojson.GeoJsonPolygonStyle;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.w3c.dom.Text;
+
+import java.io.IOException;
+import java.util.ArrayList;
 
 import java.io.IOException;
 
@@ -42,8 +60,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public final static String VISITED_TITLE_KEY = "visitedKey";
     public final static String WISH_LIST_TITLE_KEY = "wishListKey";
 
+    private static final String TAG = MapsActivity.class.getSimpleName();
+    private static final int FUSION_TABLE_LOADER_ID = 1;
+
     private GoogleMap mMap;
 
+    private FusionTableLoaderManager mFusionTableLoaderManager = new FusionTableLoaderManager();
+
+    private Marker mCurrentSelectionMarker;
+
+    private ArrayList<GeoJsonLayer> mCountryOverlays = new ArrayList<GeoJsonLayer>();
+
+    private ArrayList<Float> tempLats = new ArrayList<Float>();
+    private ArrayList<Float> tempLons = new ArrayList<Float>();
+    private ArrayList<String> tempNames = new ArrayList<String>();
     private SQLiteDatabase locationDB; //update database with values
 
     private DrawerLayout mDrawerLayout;
@@ -53,6 +83,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        Log.d(TAG, "onCreate");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -118,6 +149,42 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    public ArrayList<String> getAllContryNamesFromDatabase() {
+        Cursor cursor = locationDB.query(
+                LocationContract.Locations.TABLE_NAME,
+                new String[]{LocationContract.Locations.COLUMN_COUNTRY_NAME},
+                null,
+                null,
+                null,
+                null,
+                null);
+        ArrayList<String> savedCountyNames = new ArrayList<String>();
+        while (cursor.moveToNext()) {
+            String name = new String();
+            name = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_COUNTRY_NAME));
+            savedCountyNames.add(name);
+        }
+        return savedCountyNames;
+    }
+
+    public LatLng getLattitudeAndLongitudeOfCountryFromDB(String country) {
+        Cursor cursor = locationDB.query(
+                LocationContract.Locations.TABLE_NAME,
+                new String[]{LocationContract.Locations.COLUMN_LATITUDE, LocationContract.Locations.COLUMN_LONGITUDE},
+                LocationContract.Locations.COLUMN_COUNTRY_NAME + "='" + country + "'",
+                null,
+                null,
+                null,
+                null);
+        cursor.moveToNext();
+        String lat = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_LATITUDE));
+        String lon = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_LONGITUDE));
+        Log.d(TAG, lat);
+        LatLng retVal = new LatLng(Double.parseDouble(lat),Double.parseDouble(lon));
+        //LatLng retVal = new LatLng(1,1);
+        return retVal;
+    }
+
     public void initVisitedAndWishListActivity() { //sends user to recycle view of their visited and wish list entries in the database
         Intent visitedAndWishListActivity = new Intent(this, visited_wishlist_activity.class);
         startActivity(visitedAndWishListActivity);
@@ -129,6 +196,60 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         startActivity(visitedActivity);
     }
 
+    void setTemps() {
+        for(int i = -10; i < 10; i++){
+            tempLats.add((float) (15.0*i));
+            tempLons.add((float) (15.0*i));
+            tempNames.add(((Float) (float) (15.0*i)).toString());
+        }
+    }
+
+    private void addSavedLocations() {
+        for (int i = 0; i < tempLats.size(); i++) {
+            Log.d(TAG, "addSavedLocations:adding " + i);
+            LatLng toAdd = new LatLng(tempLats.get(i), tempLons.get(i));
+            mMap.addMarker(new MarkerOptions().position(toAdd).title(tempNames.get(i)));
+        }
+    }
+
+    private void deleteOverlays() {
+        for (GeoJsonLayer layer : mCountryOverlays) {
+            layer.removeLayerFromMap();
+        }
+        while (!mCountryOverlays.isEmpty()) {
+            mCountryOverlays.remove(0);
+        }
+    }
+
+    private void createOverlays(ArrayList<CountryOutlinesUtils.LayerInfo> borderData) {
+        GeoJsonLayer layer = new GeoJsonLayer(mMap, borderData.get(0).layerGeometry);
+        for(GeoJsonFeature e : layer.getFeatures()) {
+            layer.removeFeature(e);
+        }
+        for(int i=0;i<borderData.size();i++)
+        {
+            Log.d(TAG,"Creating Overlay");
+            GeoJsonLayer tempLayer = new GeoJsonLayer(mMap,borderData.get(i).layerGeometry);
+            for (GeoJsonFeature e : tempLayer.getFeatures())
+            {
+                GeoJsonPolygonStyle style = new GeoJsonPolygonStyle();
+                style.setFillColor(0xff00ff00+(20*i));                      //Color of the overlays
+                style.setStrokeColor(0xff000000);
+                style.setStrokeWidth(2);
+                e.setPolygonStyle(style);
+                e.setProperty("Name", borderData.get(i).name);
+                layer.addFeature(e);
+            }
+        }
+        mCountryOverlays.add(layer);
+        layer.setOnFeatureClickListener(new OnLayerClickListener());
+    }
+
+    private void addOverlays() {
+        for (GeoJsonLayer layer : mCountryOverlays) {
+            layer.addLayerToMap();
+        }
+    }
     public void initWishListActivity() { //sends user to recycle view of their wish list entries in the database
         Intent wishListActivity = new Intent(this, visited_wishlist_activity.class);
         wishListActivity.putExtra(WISH_LIST_TITLE_KEY, "Places on Wish List");
@@ -150,6 +271,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         return new SearchLoader(this, searchURL);
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onLoadFinished(Loader<String> loader, String data) {
         if (data != null) {
@@ -160,6 +282,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             mMap.moveCamera(CameraUpdateFactory.newLatLng(newLocation));
 
             insertNewLocation(searchResult); //add values to be saved in database
+            loadOverlays(true);
         } else {
 
         }
@@ -179,6 +302,20 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return locationDB.insert(LocationContract.Locations.TABLE_NAME, null, row);
         } else {
             return -1;
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private void loadOverlays(boolean reload) {
+        ArrayList<String> savedCountries = getAllContryNamesFromDatabase();
+        Log.d(TAG,CountryOutlinesUtils.buildLocationInString(savedCountries));
+        String url = CountryOutlinesUtils.buildFusionTablesQuery(CountryOutlinesUtils.buildLocationInString(savedCountries));
+        Bundle args = new Bundle();
+        args.putString(FusionTableLoaderManager.FUSION_TABLE_URL_KEY, url);
+        if(reload) {
+            getSupportLoaderManager().restartLoader(FUSION_TABLE_LOADER_ID, args, mFusionTableLoaderManager);
+        } else {
+            getSupportLoaderManager().initLoader(FUSION_TABLE_LOADER_ID, args, mFusionTableLoaderManager);
         }
     }
 
@@ -222,11 +359,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
      * it inside the SupportMapFragment. This method will only be triggered once the user has
      * installed Google Play services and returned to the app.
      */
+    @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
 
-        // Add a marker in Sydney and move the camera
+        mMap.setOnInfoWindowClickListener(new OnInfoWindowClickedListener());
+        mCurrentSelectionMarker = mMap.addMarker(new MarkerOptions().position(new LatLng(0,0)).alpha(0).infoWindowAnchor((float)0.5, 1));
+
+        loadOverlays(false);
+
+        GeoJsonLayer layer = null;
+
+
         LatLng sydney = new LatLng(-34, 151);
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
@@ -234,5 +379,69 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         // Implemented Zoom Controls to allow for easier navigation on the emulator
         UiSettings uiSettings = googleMap.getUiSettings();
         uiSettings.setZoomControlsEnabled(true);
+    }
+
+    private class FusionTableLoaderManager implements LoaderManager.LoaderCallbacks<String> {
+        public static final String FUSION_TABLE_URL_KEY = "fusionTableURL";
+        private ArrayList<CountryOutlinesUtils.LayerInfo> mFusionTableResults = null;
+
+        @Override
+        public Loader<String> onCreateLoader(int id, Bundle args) {
+            String fusionTableURL = null;
+            if(args != null) {
+                fusionTableURL = args.getString(FUSION_TABLE_URL_KEY);
+            }
+            return new FusionTableLoader(MapsActivity.this, fusionTableURL);
+        }
+
+        @Override
+        public void onLoadFinished(Loader<String> loader, String data) {
+            if(data != null) {
+                mFusionTableResults = CountryOutlinesUtils.getGeoJsonCoordinates(data);
+                Log.d(TAG,data);
+                if(mFusionTableResults!=null) {
+                    Log.d(TAG,mFusionTableResults.toString());
+                    deleteOverlays();
+                    createOverlays(mFusionTableResults);
+                    addOverlays();
+                }
+            }
+        }
+
+        @Override
+        public void onLoaderReset(Loader<String> loader) {
+
+        }
+
+    }
+
+    private class OnLayerClickListener implements GeoJsonLayer.GeoJsonOnFeatureClickListener {
+
+        @Override
+        public void onFeatureClick(Feature feature) {
+            //Log.d(TAG, feature.toString());
+            //Log.d(TAG,feature.getProperties().toString());
+                countryClicked(feature.getProperty("Name"));
+        }
+    }
+
+    /**
+     * Add functionality here for clicking on the information window for markers
+     */
+    private class OnInfoWindowClickedListener implements GoogleMap.OnInfoWindowClickListener {
+        @Override
+        public void onInfoWindowClick(Marker marker) {
+            Log.d(TAG, marker.getTitle() + "'s info window clicked");
+            //Implement info window clicked
+        }
+    }
+
+    public void countryClicked(String countryName) {
+        Log.d(TAG, countryName + " Clicked");
+        LatLng location = getLattitudeAndLongitudeOfCountryFromDB(countryName);
+        mCurrentSelectionMarker.setPosition(location);
+        mCurrentSelectionMarker.setTitle(countryName);
+        mCurrentSelectionMarker.setSnippet("This country is called " + countryName);    //Info Window Snippet
+        mCurrentSelectionMarker.showInfoWindow();
     }
 }
