@@ -6,7 +6,9 @@ import android.content.ContentValues;
 import android.content.DialogInterface;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
@@ -65,11 +67,15 @@ public class ListOptionDialogFragment extends AppCompatDialogFragment {
                         }
                     }
                 }).setPositiveButton("Accept", new DialogInterface.OnClickListener() {
+                    @RequiresApi(api = Build.VERSION_CODES.O)
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
                         //add result to database depending on result
                         if (selectedOptionHolder != null) { //user gave an option
-                            insertNewLocation(selectedOptionHolder, countryInfo);
+                            long inserted = insertNewLocation(selectedOptionHolder, countryInfo);
+                            if(inserted!=-1) {
+                                ((MapsActivity)getActivity()).notifyBDChanged();
+                            }
                         }
                         else { //user pressed accept without choosing an option
                             Toast displayErrorMessage = Toast.makeText(getContext(), "Please select an option before pressing accept.", Toast.LENGTH_LONG);
