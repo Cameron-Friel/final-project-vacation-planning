@@ -17,4 +17,10 @@
         <item>Orange</item>
         <item>Purple</item>
     </string-array>
+
+    <string-array name="pref_map_entries">
+        <item>Default</item>
+        <item>Retro</item>
+        <item>Night</item>
+    </string-array>
 </resources>

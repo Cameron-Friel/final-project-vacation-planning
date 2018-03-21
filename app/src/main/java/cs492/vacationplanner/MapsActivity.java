@@ -3,6 +3,7 @@ package cs492.vacationplanner;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Color;
@@ -31,6 +32,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.maps.android.data.Feature;
@@ -79,6 +81,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private String visitedColor; //color of visited countries
     private String wishListColor; //color of wish listed countries
+
+    private int mapStyle; //style of the map on load
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -267,12 +271,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             {
                 GeoJsonPolygonStyle style = new GeoJsonPolygonStyle();
                 if(isVisited(borderData.get(i).name)) {
-                    //style.setFillColor(0xff00ff00); //Color of the visited overlays
                     style.setFillColor(getVisitedColor()); //color of the visited overlays
                     e.setProperty("Option", "Visited");
                 } else {
                     style.setFillColor(getWishListColor()); //color of the wish list overlays
-                    //style.setFillColor(0xffff0000); //Color of the wish list overlays
                     e.setProperty("Option", "Wish List");
                 }
                 style.setStrokeColor(0xff000000);
@@ -318,6 +320,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         else { //color must be orange otherwise
             wishListColor = "ORANGE";
+        }
+
+        //find the preferred map style
+        if (sharedPreferences.getString(getString(R.string.pref_map_key), "").equals("Default")) {
+            mapStyle = R.raw.default_json;
+        }
+        else if (sharedPreferences.getString(getString(R.string.pref_map_key), "").equals("Retro")) {
+            mapStyle = R.raw.retro_json;
+        }
+        else if (sharedPreferences.getString(getString(R.string.pref_map_key), "").equals("Night")) {
+            mapStyle = R.raw.night_json;
         }
     }
 
@@ -467,6 +480,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         LatLng Corvallis = new LatLng(20, -60);
         mMap.moveCamera(CameraUpdateFactory.newLatLng(Corvallis));
 
+        try { //setup map style
+            boolean success = mMap.setMapStyle(
+                    MapStyleOptions.loadRawResourceStyle(
+                            this, mapStyle)); //load map argument to activity
+
+            if (!success) {
+                Log.e(TAG, "Style parsing failed.");
+            }
+        } catch (Resources.NotFoundException e) {
+            Log.e(TAG, "Can't find style. Error: ", e);
+        }
+
         // Implemented Zoom Controls to allow for easier navigation on the emulator
         UiSettings uiSettings = googleMap.getUiSettings();
         uiSettings.setZoomControlsEnabled(true);
@@ -510,8 +535,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         @Override
         public void onFeatureClick(Feature feature) {
-            //Log.d(TAG, feature.toString());
-            //Log.d(TAG,feature.getProperties().toString());
             countryClicked(feature.getProperty("Name"), feature.getProperty("Option"));
         }
     }
