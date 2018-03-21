@@ -12,6 +12,9 @@
     <string name="nav_visited">Visited</string>
     <string name="nav_wishlist">Wishlist</string>
 
+    <string name="share_text_prefix">Here is a note for </string>
+    <string name="share_chooser_title">Share this note:</string>
+
     <string name="dialog_visited">Visited</string>
     <string name="dialog_wish_list">Wish List</string>
 </resources>

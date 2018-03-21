@@ -1,6 +1,36 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:focusableInTouchMode="true"
+    android:focusable="true">
 
+    <TextView
+        android:id="@+id/tv_note_name"
+        android:layout_width="match_parent"
+        android:layout_height="100dp"
+        android:textSize="40sp"
+        android:paddingTop="20dp"
+        android:textAlignment="center"/>
+
+    <EditText
+        android:id="@+id/tv_note_description"
+        android:layout_width="match_parent"
+        android:layout_height="300dp"
+        android:background="@drawable/edit_text_border"
+        android:gravity="top"
+        android:text="these are some notes"
+        android:textColor="#FFF"/>
+
+    <Button
+        android:id="@+id/button_save"
+        android:layout_width="match_parent"
+        android:layout_height="67dp"
+        android:text="Save" />
+
+    <Button
+        android:id="@+id/button_cancel"
+        android:layout_width="match_parent"
+        android:layout_height="67dp"
+        android:text="Cancel" />
 </LinearLayout>

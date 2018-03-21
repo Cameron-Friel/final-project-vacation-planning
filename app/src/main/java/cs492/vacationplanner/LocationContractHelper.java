@@ -26,6 +26,7 @@ public class LocationContractHelper extends SQLiteOpenHelper {
                         LocationContract.Locations.COLUMN_LATITUDE + " TEXT NOT NULL, " +
                         LocationContract.Locations.COLUMN_LONGITUDE + " TEXT NOT NULL, " +
                         LocationContract.Locations.COLUMN_LIST_OPTION + " TEXT NOT NULL, " +
+                        LocationContract.Locations.COLUMN_NOTES + " TEXT, " +
                         LocationContract.Locations.COLUMN_TIMESTAMP + " TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
                         ");";
         db.execSQL(SQL_CREATE_SAVED_REPOS_TABLE);
