@@ -1,15 +1,12 @@
 package cs492.vacationplanner;
 
-import android.content.ContentValues;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
+import android.graphics.Color;
 import android.os.AsyncTask;
-import android.os.Handler;
-import android.os.Message;
-import android.provider.ContactsContract;
-import android.location.Location;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -20,22 +17,19 @@ import android.os.Bundle;
 import android.support.v4.app.LoaderManager;
 import android.support.v4.content.Loader;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.preference.PreferenceManager;
 import android.util.Log;
-import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.SearchView;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -44,19 +38,14 @@ import com.google.maps.android.data.geojson.GeoJsonFeature;
 import com.google.maps.android.data.geojson.GeoJsonLayer;
 import com.google.maps.android.data.geojson.GeoJsonPolygonStyle;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.w3c.dom.Text;
-
 import java.io.IOException;
 import java.util.ArrayList;
-
-import java.io.IOException;
 
 import cs492.vacationplanner.Utils.DataUtils;
 import cs492.vacationplanner.Utils.NetworkUtils;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, NavigationView.OnNavigationItemSelectedListener {
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, NavigationView.OnNavigationItemSelectedListener,
+        SharedPreferences.OnSharedPreferenceChangeListener{
 
     //Keys that go with bundles to new activities
 
@@ -86,6 +75,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private SearchView search; //object to handle user searches
 
+    SharedPreferences sharedPreferences; //fetches the user's set preferred background colors
+
+    private String visitedColor; //color of visited countries
+    private String wishListColor; //color of wish listed countries
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate");
@@ -95,6 +89,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
+
+        sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        setPreferences(sharedPreferences);
+        sharedPreferences.registerOnSharedPreferenceChangeListener(this);
 
         mDrawerLayout = (DrawerLayout)findViewById(R.id.drawer_layout);
 
@@ -153,11 +151,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         switch (item.getItemId()) {
             case R.id.main_settings:
-                //add functionality for settings
+                //send user to preferences activity
+                showPreferences();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    public void showPreferences() {
+        Intent intent = new Intent(this, SettingsActivity.class);
+        startActivity(intent);
     }
 
     public ArrayList<String> getAllContryNamesFromDatabase() {
@@ -233,9 +237,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 null,
                 null
         );
-        cursor.moveToNext();
-        String option = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_LIST_OPTION));
-        return option.equals("Visited");
+        if (cursor.getCount() != 0) { //there is a country found in the query
+            cursor.moveToNext();
+            String option = cursor.getString(cursor.getColumnIndex(LocationContract.Locations.COLUMN_LIST_OPTION));
+            return option.equals("Visited");
+        }
+        return false; //no country was found
     }
 
     private void deleteOverlays() {
@@ -260,10 +267,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             {
                 GeoJsonPolygonStyle style = new GeoJsonPolygonStyle();
                 if(isVisited(borderData.get(i).name)) {
-                    style.setFillColor(0xff00ff00);                      //Color of the visited overlays
+                    //style.setFillColor(0xff00ff00); //Color of the visited overlays
+                    style.setFillColor(getVisitedColor()); //color of the visited overlays
                     e.setProperty("Option", "Visited");
                 } else {
-                    style.setFillColor(0xffff0000);                      //Color of the wishlist overlays
+                    style.setFillColor(getWishListColor()); //color of the wish list overlays
+                    //style.setFillColor(0xffff0000); //Color of the wish list overlays
                     e.setProperty("Option", "Wish List");
                 }
                 style.setStrokeColor(0xff000000);
@@ -286,6 +295,59 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         Intent wishListActivity = new Intent(this, visited_wishlist_activity.class);
         wishListActivity.putExtra(WISH_LIST_TITLE_KEY, "Places on Wish List");
         startActivity(wishListActivity);
+    }
+
+    public void setPreferences(SharedPreferences sharedPreferences) {
+        //find the preferred visited background
+        if (sharedPreferences.getString(getString(R.string.pref_visited_key), "").equals("Green")) {
+            visitedColor = "GREEN";
+        }
+        else if (sharedPreferences.getString(getString(R.string.pref_visited_key), "").equals("Blue")) {
+            visitedColor = "BLUE";
+        }
+        else { //color must be pink otherwise
+            visitedColor = "PINK";
+        }
+
+        //find the preferred wish list background
+        if (sharedPreferences.getString(getString(R.string.pref_wish_list_key), "").equals("Red")) {
+            wishListColor = "RED";
+        }
+        else if (sharedPreferences.getString(getString(R.string.pref_wish_list_key), "").equals("Purple")) {
+            wishListColor = "PURPLE";
+        }
+        else { //color must be orange otherwise
+            wishListColor = "ORANGE";
+        }
+    }
+
+    public int getVisitedColor() {
+        if (visitedColor == "GREEN") { //green
+            return Color.	rgb(0, 179, 60);
+        }
+        else if (visitedColor == "BLUE") { //blue
+            return Color.rgb(102, 140, 255);
+        }
+        else { //pink
+            return Color.rgb(255, 102, 179);
+        }
+    }
+
+    public int getWishListColor() {
+        if (wishListColor == "RED") { //red
+            return Color.rgb(255, 80, 80);
+        }
+        else if (wishListColor == "PURPLE") { //purple
+            return Color.rgb(229, 128, 255);
+        }
+        else { //orange
+            return Color.rgb(255, 153, 51);
+        }
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String s) {
+        setPreferences(sharedPreferences);
     }
 
     public class LocationOptionSearchTask extends AsyncTask<String, Void, String> {
@@ -450,7 +512,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         public void onFeatureClick(Feature feature) {
             //Log.d(TAG, feature.toString());
             //Log.d(TAG,feature.getProperties().toString());
-                countryClicked(feature.getProperty("Name"), feature.getProperty("Option"));
+            countryClicked(feature.getProperty("Name"), feature.getProperty("Option"));
         }
     }
 

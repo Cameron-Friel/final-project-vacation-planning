@@ -17,4 +17,14 @@
 
     <string name="dialog_visited">Visited</string>
     <string name="dialog_wish_list">Wish List</string>
+
+    <!-- Preference Strings -->
+
+    <string name="pref_visited_key">pref_visited_key</string>
+    <string name="pref_visited_title">Background Color for Visited Country</string>
+    <string name="pref_visited_default">Green</string>
+
+    <string name="pref_wish_list_key">pref_wish_list_key</string>
+    <string name="pref_wish_list_title">Background Color for Wish Listed Country</string>
+    <string name="pref_wish_list_default">Red</string>
 </resources>
