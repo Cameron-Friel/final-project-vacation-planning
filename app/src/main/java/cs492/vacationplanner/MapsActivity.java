@@ -46,6 +46,8 @@ import java.util.ArrayList;
 import cs492.vacationplanner.Utils.DataUtils;
 import cs492.vacationplanner.Utils.NetworkUtils;
 
+import static cs492.vacationplanner.visited_wishlist_activity.EXTRA_LOCATION;
+
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, NavigationView.OnNavigationItemSelectedListener,
         SharedPreferences.OnSharedPreferenceChangeListener{
 
@@ -535,7 +537,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         @Override
         public void onFeatureClick(Feature feature) {
-            countryClicked(feature.getProperty("Name"), feature.getProperty("Option"));
+            countryClicked(feature.getProperty("Name"));
         }
     }
 
@@ -550,12 +552,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
-    public void countryClicked(String countryName, String option) {
-        Log.d(TAG, countryName + " Clicked");
-        LatLng location = getLattitudeAndLongitudeOfCountryFromDB(countryName);
-        mCurrentSelectionMarker.setPosition(location);
-        mCurrentSelectionMarker.setTitle(countryName);
-        mCurrentSelectionMarker.setSnippet("This country is on the list:" + option);    //Info Window Snippet
-        mCurrentSelectionMarker.showInfoWindow();
+    public void countryClicked(String countryName) {
+        //send user to notes activity when on click of added country
+        Intent noteIntent = new Intent(this, NotesActivity.class);
+        noteIntent.putExtra(EXTRA_LOCATION, countryName);
+        startActivity(noteIntent);
     }
 }
