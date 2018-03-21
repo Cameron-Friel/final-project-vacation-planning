@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Vacation Planner</string>
-    <string name="title_activity_maps">Map</string>
+    <string name="app_name">Vacation Tracker</string>
+    <string name="title_activity_maps">Vacation Tracker</string>
 
     <!-- Fusion Tables Strings -->
     <string name="fusion_table_api_key">AIzaSyAZye_2iYZvKqAkxI6KgAmQ76cKqg9l5sk</string>
@@ -17,4 +17,18 @@
 
     <string name="dialog_visited">Visited</string>
     <string name="dialog_wish_list">Wish List</string>
+
+    <!-- Preference Strings -->
+
+    <string name="pref_visited_key">pref_visited_key</string>
+    <string name="pref_visited_title">Background Color for Visited Country</string>
+    <string name="pref_visited_default">Green</string>
+
+    <string name="pref_wish_list_key">pref_wish_list_key</string>
+    <string name="pref_wish_list_title">Background Color for Wish Listed Country</string>
+    <string name="pref_wish_list_default">Red</string>
+
+    <string name="pref_map_key">pref_map_key</string>
+    <string name="pref_map_title">Background Style for the Map</string>
+    <string name="pref_map_default">Default</string>
 </resources>

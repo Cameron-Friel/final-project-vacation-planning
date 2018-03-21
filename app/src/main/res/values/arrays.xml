@@ -6,4 +6,21 @@
         <item>@string/dialog_wish_list</item>
     </string-array>
 
+    <string-array name="pref_visited_entries">
+        <item>Green</item>
+        <item>Blue</item>
+        <item>Pink</item>
+    </string-array>
+
+    <string-array name="pref_wish_list_entries">
+        <item>Red</item>
+        <item>Orange</item>
+        <item>Purple</item>
+    </string-array>
+
+    <string-array name="pref_map_entries">
+        <item>Default</item>
+        <item>Retro</item>
+        <item>Night</item>
+    </string-array>
 </resources>
